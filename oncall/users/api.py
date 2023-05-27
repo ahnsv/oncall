@@ -1,6 +1,6 @@
 # create django ninja router for user app
 from django.core.handlers.wsgi import WSGIRequest
-from ninja import Router, Schema
+from ninja import Router, Schema, ModelSchema, Field
 from pydantic import BaseModel
 
 from .models import Profile, Team
@@ -34,11 +34,19 @@ class TeamIn(Schema):
     on_call: int
 
 
-class TeamOut(Schema):
-    id: int
-    name: str
-    members: list[int]
-    on_call: int
+class TeamOut(ModelSchema):
+    class Config:
+        model = Team
+        model_fields = ["id", "name", "members", "on_call"]
+
+
+class TeamOncallOut(ModelSchema):
+    on_call_: ProfileOut = Field(alias="on_call")
+
+    class Config:
+        model = Team
+        model_fields = ["id", "name"]
+        allow_population_by_field_name = True
 
 
 @user_router.get("/profiles", response=List[ProfileOut])
@@ -75,7 +83,7 @@ def delete_profile(request, id: int):
 
 
 @user_router.get("/profiles/{id}/teams", response={200: List[TeamOut]})
-def get_teams(request: WSGIRequest, id: int):
+def get_profile_teams(request: WSGIRequest, id: int):
     profile = Profile.objects.get(id=id)
     return profile.teams.all()
 
@@ -92,9 +100,9 @@ def get_on_call(request: WSGIRequest, id: int):
     return profile.on_call_teams.all()
 
 
-@user_router.get("/teams", response=List[TeamOut])
+@user_router.get("/teams", response=List[TeamOncallOut])
 def get_teams(request: WSGIRequest):
-    return Team.objects.all()
+    return Team.objects.select_related("on_call").all()
 
 
 @user_router.get("/teams/{id}", response={200: TeamOut, 404: None})
@@ -104,6 +112,15 @@ def get_team(request: WSGIRequest, id: int):
         assert len(teams) == 1
         return teams
     except (Team.DoesNotExist, AssertionError):
+        raise HttpError(404, "Team not found")
+
+
+@user_router.get("/teams/{id}/on_call", response={200: ProfileOut, 404: None})
+def get_team_on_call(request: WSGIRequest, id: int):
+    try:
+        team = Team.objects.get(id=id)
+        return team.on_call
+    except Team.DoesNotExist:
         raise HttpError(404, "Team not found")
 
 
