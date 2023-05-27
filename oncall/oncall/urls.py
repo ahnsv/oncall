@@ -18,13 +18,11 @@ from django.contrib import admin
 from django.urls import path
 from ninja import NinjaAPI
 
+from users.api import user_router
+from schedules.api import schedule_router
 
-api = NinjaAPI()
-
-
-@api.get("/add")
-def add(request, a: int, b: int):
-    return {"result": a + b}
-
+api = NinjaAPI(title="OnCall API", version="1.0.0", description="OnCall API", csrf=True)
+api.add_router(prefix="/users", router=user_router)
+api.add_router(prefix="/schedules", router=schedule_router)
 
 urlpatterns = [path("admin/", admin.site.urls), path("api/", api.urls)]

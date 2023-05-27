@@ -1,6 +1,7 @@
 from django.db import models
 from users.models import Team, Profile
 
+
 class Schedule(models.Model):
     team = models.ForeignKey(Team, on_delete=models.CASCADE)
     start_time = models.DateTimeField()

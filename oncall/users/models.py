@@ -12,7 +12,7 @@ class Team(models.Model):
     def __str__(self):
         return self.name
 
-# create django mdel named Profile
+
 class Profile(models.Model):
     user = models.ForeignKey("auth.User", on_delete=models.CASCADE, null=True, related_name="profile")
     name = models.CharField(max_length=50)
@@ -21,4 +21,3 @@ class Profile(models.Model):
 
     def __str__(self):
         return self.name
-

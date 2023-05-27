@@ -13,6 +13,33 @@ django-auth-oidc = "^0.6.0"
 [tool.poetry.dev-dependencies]
 ruff = "^0.0.269"
 pytest = "^7.3.1"
+pyright = "^1.1.310"
+
+[tool.poetry.scripts]
+oncall = "oncall.asgi:application"
+
+[tool.poetry.group.dev.dependencies]
+django-stubs = {extras = ["compatible-mypy"], version = "^4.2.0"}
+
+[tool.pyright]
+include = ["oncall"]
+exclude = [
+    "**/node_modules",
+    "**/__pycache__",
+]
+defineConstant = { DEBUG = true }
+venvPath = "."
+venv = "oncall"
+
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+pythonVersion = "3.10"
+pythonPlatform = "Linux"
+
+executionEnvironments = [
+  { root = "oncall" }
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
