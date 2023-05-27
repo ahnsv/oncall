@@ -1,6 +1,7 @@
 # create django ninja router for user app
 from django.core.handlers.wsgi import WSGIRequest
 from ninja import Router, Schema, ModelSchema, Field
+from ninja.errors import HttpError
 from pydantic import BaseModel
 
 from .models import Profile, Team
