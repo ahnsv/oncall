@@ -15,8 +15,10 @@ class Schedule(models.Model):
 class Rotation(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
-    team = models.ForeignKey("users.Team", on_delete=models.CASCADE, related_name="rotation", null=True)
-    schedules = models.ManyToManyField(Schedule, through='RotationSchedule')
+    team = models.ForeignKey(
+        "users.Team", on_delete=models.CASCADE, related_name="rotation", null=True
+    )
+    schedules = models.ManyToManyField(Schedule, through="RotationSchedule")
 
     def __str__(self):
         return self.name
@@ -29,4 +31,4 @@ class RotationSchedule(models.Model):
     end_date = models.DateField(null=True)
 
     def __str__(self):
-        return f'{self.rotation.name} - {self.schedule}'
+        return f"{self.rotation.name} - {self.schedule}"

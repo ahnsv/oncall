@@ -1,10 +1,9 @@
 # create django ninja router for user app
 import logging
-from datetime import timedelta, datetime, date
+from datetime import timedelta, date
 from typing import List
 
 from django.core.handlers.wsgi import WSGIRequest
-from django.db.models import Max
 from django.shortcuts import get_object_or_404
 from ninja import Router, Schema, ModelSchema, Field
 from ninja.errors import HttpError
@@ -175,17 +174,20 @@ def create_rotation(request, team_id: int, rotation_in: RotationIn):
 
     start_date = rotation_in.start_date
     # Generate schedules based on rotation start and end dates
-    schedules = generate_schedules(rotation_in.start_date, rotation_in.end_date, profiles, team_id=team_id)
+    schedules = generate_schedules(
+        rotation_in.start_date, rotation_in.end_date, profiles, team_id=team_id
+    )
 
     # Create the rotation
-    rotation = Rotation.objects.create(team=team, name=rotation_in.name,
-                                       description=rotation_in.description)
+    rotation = Rotation.objects.create(
+        team=team, name=rotation_in.name, description=rotation_in.description
+    )
 
     rotation_schedules = []
     # Create rotation schedules for each team member
     for i, profile in enumerate(profiles):
         next_index = (i + 1) % len(profiles)
-        next_profile = profiles[next_index]
+        profiles[next_index]
         next_schedule_index = (i + 1) % len(schedules)
         schedule = schedules[i % len(schedules)]
         next_schedule = schedules[next_schedule_index]
@@ -194,7 +196,7 @@ def create_rotation(request, team_id: int, rotation_in: RotationIn):
             rotation=rotation,
             schedule=schedule,
             start_date=start_date,
-            end_date=None  # Set the end date later
+            end_date=None,  # Set the end date later
         )
 
         # Calculate the end date based on the start date and the next team member's start date
@@ -220,8 +222,12 @@ def generate_schedules(start_date, end_date, profiles, team_id: int):
     for i in range(num_schedules):
         schedule_start = start_date + timedelta(days=i)
         schedule_end = schedule_start + timedelta(days=1)
-        schedule = Schedule.objects.create(start_time=schedule_start, end_time=schedule_end, on_call_id=profiles[i].id,
-                                           team_id=team_id)
+        schedule = Schedule.objects.create(
+            start_time=schedule_start,
+            end_time=schedule_end,
+            on_call_id=profiles[i].id,
+            team_id=team_id,
+        )
         schedules.append(schedule)
 
     return schedules

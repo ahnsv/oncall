@@ -36,4 +36,3 @@ def create_schedule(request, payload: ScheduleIn):
 def create_team_schedule(request, payload: List[ScheduleIn]):
     schedules = [Schedule.objects.create(**schedule.dict()) for schedule in payload]
     return schedules
-
