@@ -17,8 +17,6 @@ pyright = "^1.1.310"
 
 [tool.poetry.scripts]
 oncall = "oncall.asgi:application"
-
-[tool.poetry.group.dev.dependencies]
 django-stubs = {extras = ["compatible-mypy"], version = "^4.2.0"}
 
 [tool.pyright]

@@ -1,12 +1,16 @@
 # create django ninja router for user app
+import logging
+from datetime import timedelta, datetime, date
+from typing import List
+
 from django.core.handlers.wsgi import WSGIRequest
+from django.db.models import Max
+from django.shortcuts import get_object_or_404
 from ninja import Router, Schema, ModelSchema, Field
 from ninja.errors import HttpError
-from pydantic import BaseModel
 
+from schedules.models import Schedule, RotationSchedule, Rotation
 from .models import Profile, Team
-from typing import List
-import logging
 
 user_router = Router(tags=["users"])
 
@@ -130,12 +134,12 @@ def create_team(request: WSGIRequest, payload: TeamIn):
     return Team.objects.create(**payload.dict())
 
 
-@user_router.put("/teams/{id}")
+@user_router.put("/teams/{id}", response={200: TeamOut})
 def update_team(request: WSGIRequest, id: int, payload: TeamIn):
     team = Team.objects.get(id=id)
     team.name = payload.name
-    team.members = payload.members
-    team.on_call = payload.on_call
+    team.members.set(payload.members)
+    team.on_call = Profile.objects.get(id=payload.on_call)
     team.save()
     return team
 
@@ -145,3 +149,79 @@ def delete_team(request: WSGIRequest, id: int):
     team = Team.objects.get(id=id)
     team.delete()
     return {"message": "Team deleted successfully!"}
+
+
+class RotationIn(Schema):
+    name: str
+    description: str
+    start_date: date
+    end_date: date
+    cadence_in_days: int  # TODO: add enum
+
+
+@user_router.post("/team/{team_id}/rotation/")
+def create_rotation(request, team_id: int, rotation_in: RotationIn):
+    team = get_object_or_404(Team, id=team_id)
+    profiles = team.members.all()
+
+    if len(profiles) < 2:
+        return {"message": "Rotation requires at least two team members."}
+
+    # # Determine the maximum rotation end date for the team
+    # max_end_date = RotationSchedule.objects.filter(rotation__team=team).aggregate(Max("end_date"))["end_date__max"]
+    # if max_end_date:
+    #     start_date = max_end_date + timedelta(days=1)
+    # else:
+
+    start_date = rotation_in.start_date
+    # Generate schedules based on rotation start and end dates
+    schedules = generate_schedules(rotation_in.start_date, rotation_in.end_date, profiles, team_id=team_id)
+
+    # Create the rotation
+    rotation = Rotation.objects.create(team=team, name=rotation_in.name,
+                                       description=rotation_in.description)
+
+    rotation_schedules = []
+    # Create rotation schedules for each team member
+    for i, profile in enumerate(profiles):
+        next_index = (i + 1) % len(profiles)
+        next_profile = profiles[next_index]
+        next_schedule_index = (i + 1) % len(schedules)
+        schedule = schedules[i % len(schedules)]
+        next_schedule = schedules[next_schedule_index]
+
+        rotation_schedule = RotationSchedule.objects.create(
+            rotation=rotation,
+            schedule=schedule,
+            start_date=start_date,
+            end_date=None  # Set the end date later
+        )
+
+        # Calculate the end date based on the start date and the next team member's start date
+        end_date = start_date + (next_schedule.start_time - start_date)
+        rotation_schedule.end_date = end_date
+        rotation_schedule.save()
+        rotation_schedules.append(rotation_schedule)
+
+        start_date = end_date + timedelta(days=1)
+
+    rotation.rotationschedule_set.add(*rotation_schedules)
+
+    return {"message": "Rotation schedule created successfully."}
+
+
+def generate_schedules(start_date, end_date, profiles, team_id: int):
+    num_days = (end_date - start_date).days + 1
+    num_profiles = len(profiles)
+    num_schedules = min(num_days, num_profiles)
+    schedules = []
+
+    # Generate schedules based on the number of days and profiles
+    for i in range(num_schedules):
+        schedule_start = start_date + timedelta(days=i)
+        schedule_end = schedule_start + timedelta(days=1)
+        schedule = Schedule.objects.create(start_time=schedule_start, end_time=schedule_end, on_call_id=profiles[i].id,
+                                           team_id=team_id)
+        schedules.append(schedule)
+
+    return schedules
